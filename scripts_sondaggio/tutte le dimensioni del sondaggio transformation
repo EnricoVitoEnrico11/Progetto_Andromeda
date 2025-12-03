@@ -36,6 +36,33 @@ create table dim_provincia_domicilio as
 from sondaggio.progetto_andromeda pa
 ) t
 
+drop table if exists dim_provincia_domicilio;
+	
+	create table dim_provincia_domicilio as 
+	select row_number () over() , * from (select distinct 
+	trim (INITCAP (
+		case
+        when provincia_domicilio = 'bo'
+        	then 'bologna'
+        when provincia_domicilio = 'rm'
+        	then 'roma'
+        when provincia_domicilio = 'mn'
+        	then 'mantova'
+        when provincia_domicilio = 'villamaina(av)'
+        	then 'avellino'
+        when provincia_domicilio = 'via del giardinetto 30 marlia'
+        	then 'lucca'
+        when provincia_domicilio = 'tunisi'
+        	then 'estero'
+        when provincia_domicilio = 'forlì cesena'
+        	then 'forlì-cesena'
+        else provincia_domicilio 
+        end   )
+                
+	) as provincia_domicilio from (select trim(lower(provincia_domicilio)) as provincia_domicilio
+	from sondaggio.progetto_andromeda pa)
+	order by provincia_domicilio) t;
+
 select * from dim_provincia_domicilio
 
 -- adesso procediamo con la "dim_grandezza_azienda"
