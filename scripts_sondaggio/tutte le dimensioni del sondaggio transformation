@@ -124,18 +124,34 @@ from sondaggio.progetto_andromeda pa
 ) t;
 -- qui c'è l'inserimento della dimensione
 -- con il fittizio 'nessuna discriminazione indicata'
--- comunque c'è un problema con i valori
+-- risolto il problema con i valori
 
 drop table if exists dim_tipo_discriminazione;
 
-create table dim_tipo_discriminazione AS
-select  row_number () over(
-	 order by (valore_discriminazione = 'Nessuna discriminazione indicata')
-	desc, valore_discriminazione) as ids_tipo_discrizimazione,
-	valore_discriminazione as tipo_discriminazione from
-	(select distinct coalesce(nullif(trim(pa.tipo_discriminazione), ''), 'Nessuna discriminazione indicata')
-as valore_discriminazione from sondaggio.progetto_andromeda pa
-) t;
+create table dim_tipo_discriminazione as
+SELECT 
+    row_number() OVER (
+        ORDER BY 
+            (valore_discriminazione = 'Nessuna discriminazione indicata') DESC, 
+            valore_discriminazione
+    ) as ids_tipo_discriminazione,
+    valore_discriminazione as tipo_discriminazione
+FROM 
+    (
+    -- LIVELLO 2: Pulisce i dati, gestisce i NULL e rimuove i duplicati
+    select distinct 
+        COALESCE(NULLIF(TRIM(t1.singolo_elemento), ''), 'Nessuna discriminazione indicata') 
+        as valore_discriminazione
+    FROM 
+        (
+        -- LIVELLO 1 (Il cuore): Spacchetta le stringhe separate dalla virgola
+        SELECT 
+            unnest(string_to_array(pa.tipo_discriminazione, ',')) as singolo_elemento 
+        FROM 
+            sondaggio.progetto_andromeda pa
+        ) t1
+    ) t2;
+
 
 -- creazione dim_vittima_o_testimone_di_violenza
 
@@ -158,6 +174,31 @@ select distinct pa.tipo_violenza
 from sondaggio.progetto_andromeda pa
 
 ) t;
+
+-- qui c'è sia il fittizio che lo split delle colonne
+
+SELECT 
+    row_number() OVER (
+        ORDER BY 
+            (valore_violenza = 'Nessuna violenza indicata') DESC, 
+            valore_violenza
+    ) as ids_tipo_violenza,
+    valore_violenza as tipo_violenza
+FROM 
+    (
+    -- LIVELLO 2: Pulisce gli spazi, gestisce i NULL/vuoti e rimuove i duplicati
+    SELECT DISTINCT 
+        COALESCE(NULLIF(TRIM(t1.singolo_elemento), ''), 'Nessuna violenza indicata') 
+        as valore_violenza
+    FROM 
+        (
+        -- LIVELLO 1: Spacchetta le stringhe separate da virgola
+        SELECT 
+            unnest(string_to_array(pa.tipo_violenza, ',')) as singolo_elemento 
+        FROM 
+            sondaggio.progetto_andromeda pa
+        ) t1
+    ) t2;
 
 -- creazione dim_presenza_formazione_antidiscriminazione_in_azienda
 
