@@ -1,4 +1,4 @@
-set search_path to istat_landing;
+set_search path to istat_landing;
 
 
 SET SEARCH_PATH  to 
