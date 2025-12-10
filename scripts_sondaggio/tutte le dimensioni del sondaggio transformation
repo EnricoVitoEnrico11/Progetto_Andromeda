@@ -456,23 +456,42 @@ FROM (
 
 ) final_view;
 
--- questa sembra funzionare ma solo con ids_genere ed è ovviamente da ripulire
--- mettere altre join non le fa funzionare con lo stesso procedimento purtroppo
- SELECT "timestamp",
---genere,
+-- questo "fatto" contiene tutti gli ids ma in alcune colonne appaiono i valori "NULL"
+
+ SELECT 
 ids_genere,
---fascia_eta
-fascia_eta,
-provincia_domicilio,
---grandezza_azienda
-grandezza_azienda,
-durata_lavoro_in_azienda,
-provincia_ultimo_lavoro,
-vittima_o_testimone_di_discriminazione_in_azienda,
-tipo_discriminazione, vittima_o_testimone_di_violenza,
-tipo_violenza,
-presenza_formazione_antidiscriminazione_in_azienda,
-presenza_regolamenti_antidiscriminazione
+ids_fascia_eta,
+ids_provincia_domicilio,
+ids_grandezza_azienda,
+ids_durata_lavoro_in_azienda,
+ids_provincia_ultimo_lavoro,
+ids_vittima_o_testimone_di_discriminazione_in_azienda,
+ids_tipo_discriminazione, ids_vittima_o_testimone_di_violenza,
+ids_tipo_violenza,
+ids_presenza_formazione_antidiscriminazione_in_azienda,
+ids_presenza_regolamenti_antidiscriminazione
 FROM sondaggio.progetto_andromeda pa
 left join dim_genere dg -- qui ho utilizzato un alias
 on pa.genere = dg.genere
+left join dim_fascia_eta dfe 
+on pa.fascia_eta =dfe.fascia_eta
+left join dim_provincia_domicilio dpd 
+on pa.provincia_domicilio = dpd.provincia_domicilio
+left join dim_grandezza_azienda dga 
+on pa.grandezza_azienda = dga.grandezza_azienda
+left join dim_durata_lavoro_in_azienda ddlia 
+on pa.durata_lavoro_in_azienda = ddlia.durata_lavoro_in_azienda
+left join dim_provincia_ultimo_lavoro dpul 
+on pa.provincia_ultimo_lavoro = dpul.provincia_ultimo_lavoro
+left join dim_vittima_o_testimone_di_discriminazione_in_azienda dvotddia 
+on pa.vittima_o_testimone_di_discriminazione_in_azienda = dvotddia.vittima_o_testimone_di_discriminazione_in_azienda
+left join dim_tipo_discriminazione dtd 
+on pa.tipo_discriminazione = dtd.tipo_discriminazione
+left join dim_vittima_o_testimone_di_violenza dvotdv 
+on pa.vittima_o_testimone_di_violenza = dvotdv.vittima_o_testimone_di_violenza
+left join dim_tipo_violenza dtv 
+on pa.tipo_violenza = dtv.tipo_violenza 
+left join dim_presenza_formazione_antidiscriminazione_in_azienda dpfaia 
+on pa.presenza_formazione_antidiscriminazione_in_azienda = dpfaia.presenza_formazione_antidiscriminazione_in_azienda
+left join dim_presenza_regolamenti_antidiscriminazione dpra 
+on pa.presenza_regolamenti_antidiscriminazione = dpra.presenza_regolamenti_antidiscriminazione;
