@@ -203,6 +203,62 @@ from (
     ) t_interna
 ) t_esterna;
 
+create table if not exists sondaggio_transformation.man_mapping_province ( originale text,corretto text);
+
+drop table if exists sondaggio_transformation.tt_provincia_validated_v01;
+
+create table sondaggio_transformation.tt_provincia_validated_v01 as 
+select distinct coalesce(prov."Provincia",coalesce(prov_s."Provincia",son.provincia )) as provincia, 
+ prov."Provincia" is null and prov_s."Provincia" is null as err
+from
+(
+	select lower(trim(provincia_domicilio)) as provincia
+	FROM sondaggio.progetto_andromeda
+	union 
+	select lower(trim(provincia_ultimo_lavoro)) as provincia
+	FROM sondaggio.progetto_andromeda
+) son
+left join sondaggio_transformation.province_italiane prov
+	on son.provincia=lower(prov."Provincia")
+left join sondaggio_transformation.province_italiane prov_s
+	on lower(son.provincia)=lower(prov_s."Sigla" )
+order by provincia asc;
+
+drop table if exists sondaggio_transformation.dim_provincia;
+
+create table sondaggio_transformation.dim_provincia as 
+select row_number() over( order by provincia asc) as ids_provincia, provincia
+from
+(
+	select provincia
+	from sondaggio_transformation.tt_provincia_validated_v01
+	where err=false 
+	union
+	(
+		select corretto as provincia from(
+		select provincia 
+		from sondaggio_transformation.tt_provincia_validated_v01
+		where err=true 
+	) rotti
+	join sondaggio_transformation.man_mapping_province mapping
+		on rotti.provincia=mapping.originale
+	)
+)order by provincia;
+
+drop table if exists sondaggio_transformation.et_dim_provincia;
+
+create table et_dim_provincia as 
+select FORMAT('Valore provincia "%s" non valido',rotti.provincia ) as messaggio from(
+select provincia 
+from sondaggio_transformation.tt_provincia_validated_v01
+where err=true 
+) rotti
+left join sondaggio_transformation.man_mapping_province mapping
+	on rotti.provincia=mapping.originale
+where mapping.corretto is null
+	
+select * from et_dim_provincia
+
 --ET 
 drop table if exists sondaggio_transformation.et_dim_provincia_domicilio;
 create table if not exists sondaggio_transformation.et_dim_provincia_domicilio as
