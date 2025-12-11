@@ -141,9 +141,14 @@ create table dim_presenza_regolamenti_antidiscriminazione as
 
 	
 
+--- tabella manuale per andare a correggere valori delle province
 create table if not exists sondaggio_transformation.man_mapping_province ( originale text,corretto text);
 
 drop table if exists sondaggio_transformation.tt_provincia_validated_v01;
+
+
+--- cerca province nella tabella istat con tutte le province
+--- MANCA DA COLLEGARE LA DIM_REGIONE
 
 create table sondaggio_transformation.tt_provincia_validated_v01 as 
 select distinct coalesce(prov."Provincia",coalesce(prov_s."Provincia",son.provincia )) as provincia, 
@@ -161,6 +166,11 @@ left join sondaggio_transformation.province_italiane prov
 left join sondaggio_transformation.province_italiane prov_s
 	on lower(son.provincia)=lower(prov_s."Sigla" )
 order by provincia asc;
+
+-- dimensione provincia con valori corretti da valori sondaggio
+-- e da valori di tabella manuale corretti
+--- MANCA DA COLLEGARE LA DIM_REGIONE
+
 
 drop table if exists sondaggio_transformation.dim_provincia;
 create table sondaggio_transformation.dim_provincia as 
@@ -187,6 +197,9 @@ select -1 as ids_provincia,'Provincia sconosciuta' as provincia
 
 drop table if exists sondaggio_transformation.et_dim_provincia;
 
+
+-- tabella errori provincia
+
 create table et_dim_provincia as 
 select FORMAT('Valore provincia "%s" non valido',rotti.provincia ) as messaggio from(
 select provincia 
@@ -199,31 +212,16 @@ where mapping.corretto is null
 ;
 
 
---creazione del fatto 
-select row_number() over() as ids, *
-from (
-    select 
-        dg.ids_genere, 
-        d.ids_fascia_eta, 
-        coalesce(dpr.ids_provincia, et.ids_provincia) as ids_provincia
-    from sondaggio.progetto_andromeda pa
-    left join dim_genere dg on dg.genere = pa.genere
-    left join dim_fascia_eta d on pa.fascia_eta = d.fascia_eta
-    left join dim_provincia_regione dpr  
-        on pa.provincia_domicilio = dpr."territorio" 
-        or pa.provincia_domicilio = dpr."sigla_territorio"
-    left join sondaggio_transformation.et_dim_provincia_domicilio_mapping et 
-        on et.sigla = dpr.sigla_territorio ) sub;
-
-select count(*) from sondaggio.progetto_andromeda pa 
-
-
+-- toglie spazi da campi provincia domicilio e ultimo lavoro
 
 drop table if exists sondaggio_transformation.tt_sondaggio_province_trim_v1;
 create table sondaggio_transformation.tt_sondaggio_province_trim_v1 as
 select "timestamp", genere, fascia_eta, trim(provincia_domicilio) as provincia_domicilio, grandezza_azienda, durata_lavoro_in_azienda, trim(provincia_ultimo_lavoro) as provincia_ultimo_lavoro ,vittima_o_testimone_di_discriminazione_in_azienda, tipo_discriminazione, vittima_o_testimone_di_violenza, tipo_violenza, presenza_formazione_antidiscriminazione_in_azienda, presenza_regolamenti_antidiscriminazione from 
 sondaggio.progetto_andromeda pa;
 
+
+-- trasformazione di tutte le province domicilio nella versione estesa 
+-- se sono delle sigle (se sono rotte rimangono rotte)
 
 drop table if exists sondaggio_transformation.tt_sondaggio_province_domicilio_ok_v2;
 create table sondaggio_transformation.tt_sondaggio_province_domicilio_ok_v2 as
@@ -238,6 +236,9 @@ left join sondaggio_transformation.province_italiane t
 on lower(trim(pa.provincia_domicilio))=lower(t."Sigla")
 where t."Provincia" is null;
 
+
+-- trasformazione di tutte le province ultimo lavoro nella versione estesa 
+-- se sono delle sigle (se sono rotte rimangono rotte)
 
 drop table if exists sondaggio_transformation.tt_sondaggio_province_ultimo_lavoro_ok_v3;
 create table sondaggio_transformation.tt_sondaggio_province_ultimo_lavoro_ok_v3 as
@@ -255,20 +256,27 @@ where t."Provincia" is null;
 
 -- inizio di creazione del fatto
 
-select "timestamp",
-coalesce(dp.ids_provincia,coalesce(dp2.ids_provincia ,-1)) as ids_provincia_domicilio,
-coalesce(dp_l.ids_provincia,coalesce(dp_l2.ids_provincia ,-1)) as ids_provincia_ultimo_lavoro
-from sondaggio_transformation.tt_sondaggio_province_ultimo_lavoro_ok_v3 pa 
-left join sondaggio_transformation.dim_provincia dp
-on lower(pa.provincia_domicilio)=lower(dp.provincia)
-left join sondaggio_transformation.man_mapping_province mmp
-on lower(pa.provincia_domicilio)=lower(mmp.originale )
-left join sondaggio_transformation.dim_provincia dp2
-on lower(mmp.corretto )=lower(dp2.provincia)
-left join sondaggio_transformation.dim_provincia dp_l
-on lower(pa.provincia_ultimo_lavoro)=lower(dp.provincia)
-left join sondaggio_transformation.man_mapping_province mmpl
-on lower(pa.provincia_ultimo_lavoro)=lower(mmp.originale )
-left join sondaggio_transformation.dim_provincia dp_l2
-on lower(mmpl.corretto )=lower(dp2.provincia)
+select row_number() over() as ids_risposta, *
+from (
+	select 
+	coalesce(dp.ids_provincia,coalesce(dp2.ids_provincia ,-1)) as ids_provincia_domicilio,
+	coalesce(dp_l.ids_provincia,coalesce(dp_l2.ids_provincia ,-1)) as ids_provincia_ultimo_lavoro,
+	coalesce(dg.ids_genere,-1) as ids_genere, 
+	coalesce(d.ids_fascia_eta,-1) as ids_fascia_eta
+	from sondaggio_transformation.tt_sondaggio_province_ultimo_lavoro_ok_v3 pa 
+	left join sondaggio_transformation.dim_provincia dp
+	on lower(pa.provincia_domicilio)=lower(dp.provincia)
+	left join sondaggio_transformation.man_mapping_province mmp
+	on lower(pa.provincia_domicilio)=lower(mmp.originale )
+	left join sondaggio_transformation.dim_provincia dp2
+	on lower(mmp.corretto )=lower(dp2.provincia)
+	left join sondaggio_transformation.dim_provincia dp_l
+	on lower(pa.provincia_ultimo_lavoro)=lower(dp.provincia)
+	left join sondaggio_transformation.man_mapping_province mmpl
+	on lower(pa.provincia_ultimo_lavoro)=lower(mmp.originale )
+	left join sondaggio_transformation.dim_provincia dp_l2
+	on lower(mmpl.corretto )=lower(dp2.provincia)
+	 left join sondaggio_transformation.dim_genere dg on dg.genere = pa.genere
+	left join sondaggio_transformation.dim_fascia_eta d on pa.fascia_eta = d.fascia_eta
+)
 
