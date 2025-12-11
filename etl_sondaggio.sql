@@ -270,14 +270,6 @@ SELECT
     END AS ids_provincia
 FROM mapped;
 
-drop table if exists dim_provincia_domicilio CASCADE;
-create table dim_provincia_domicilio as
-	select row_number () over() as ids_provincia_domicilio , * from (
-	select distinct p."Sigla" from sondaggio.progetto_andromeda a
-	join sondaggio_transformation.province_italiane p on (p."Sigla"=a."provincia_domicilio"
-	or p."Provincia"=a."provincia_domicilio") join sondaggio_transformation.et_dim_provincia_domicilio_mapping dm
-on dm.sigla=p."Sigla");
-
 
   --et mapping a mano 
 DROP TABLE IF EXISTS sondaggio_transformation.et_dim_provincia_mapping CASCADE;
