@@ -163,7 +163,6 @@ left join sondaggio_transformation.province_italiane prov_s
 order by provincia asc;
 
 drop table if exists sondaggio_transformation.dim_provincia;
-
 create table sondaggio_transformation.dim_provincia as 
 select row_number() over( order by provincia asc) as ids_provincia, provincia
 from
@@ -181,7 +180,10 @@ from
 	join sondaggio_transformation.man_mapping_province mapping
 		on rotti.provincia=mapping.originale
 	)
-)order by provincia;
+)
+union all
+select -1 as ids_provincia,'Provincia sconosciuta' as provincia
+;
 
 drop table if exists sondaggio_transformation.et_dim_provincia;
 
@@ -195,6 +197,7 @@ left join sondaggio_transformation.man_mapping_province mapping
 	on rotti.provincia=mapping.originale
 where mapping.corretto is null
 ;
+
 
 --creazione del fatto 
 select row_number() over() as ids, *
@@ -212,6 +215,60 @@ from (
     left join sondaggio_transformation.et_dim_provincia_domicilio_mapping et 
         on et.sigla = dpr.sigla_territorio ) sub;
 
-select coalesce(dpr.ids_provincia, edpdm.ids_provincia) from sondaggio.progetto_andromeda pa 
-left join dim_provincia_regione dpr on (lower(pa.provincia_domicilio) = lower(dpr.sigla_territorio) or lower(pa.provincia_domicilio) = lower(dpr.territorio) )
-left join sondaggio_transformation.et_dim_provincia_domicilio_mapping edpdm on lower(edpdm.provincia_domicilio) = lower(pa.provincia_domicilio) 
+select count(*) from sondaggio.progetto_andromeda pa 
+
+
+
+drop table if exists sondaggio_transformation.tt_sondaggio_province_trim_v1;
+create table sondaggio_transformation.tt_sondaggio_province_trim_v1 as
+select "timestamp", genere, fascia_eta, trim(provincia_domicilio) as provincia_domicilio, grandezza_azienda, durata_lavoro_in_azienda, trim(provincia_ultimo_lavoro) as provincia_ultimo_lavoro ,vittima_o_testimone_di_discriminazione_in_azienda, tipo_discriminazione, vittima_o_testimone_di_violenza, tipo_violenza, presenza_formazione_antidiscriminazione_in_azienda, presenza_regolamenti_antidiscriminazione from 
+sondaggio.progetto_andromeda pa;
+
+
+drop table if exists sondaggio_transformation.tt_sondaggio_province_domicilio_ok_v2;
+create table sondaggio_transformation.tt_sondaggio_province_domicilio_ok_v2 as
+select "timestamp", genere, fascia_eta, t."Provincia" as provincia_domicilio, grandezza_azienda, durata_lavoro_in_azienda,  provincia_ultimo_lavoro, vittima_o_testimone_di_discriminazione_in_azienda, tipo_discriminazione, vittima_o_testimone_di_violenza, tipo_violenza, presenza_formazione_antidiscriminazione_in_azienda, presenza_regolamenti_antidiscriminazione from 
+sondaggio_transformation.tt_sondaggio_province_trim_v1 pa
+join sondaggio_transformation.province_italiane t
+on lower(trim(pa.provincia_domicilio))=lower(t."Sigla")
+union 
+select "timestamp", genere, fascia_eta, provincia_domicilio, grandezza_azienda, durata_lavoro_in_azienda,  provincia_ultimo_lavoro, vittima_o_testimone_di_discriminazione_in_azienda, tipo_discriminazione, vittima_o_testimone_di_violenza, tipo_violenza, presenza_formazione_antidiscriminazione_in_azienda, presenza_regolamenti_antidiscriminazione from 
+sondaggio_transformation.tt_sondaggio_province_trim_v1 pa
+left join sondaggio_transformation.province_italiane t
+on lower(trim(pa.provincia_domicilio))=lower(t."Sigla")
+where t."Provincia" is null;
+
+
+drop table if exists sondaggio_transformation.tt_sondaggio_province_ultimo_lavoro_ok_v3;
+create table sondaggio_transformation.tt_sondaggio_province_ultimo_lavoro_ok_v3 as
+select "timestamp", genere, fascia_eta, provincia_domicilio, grandezza_azienda, durata_lavoro_in_azienda,  t."Provincia" as provincia_ultimo_lavoro, vittima_o_testimone_di_discriminazione_in_azienda, tipo_discriminazione, vittima_o_testimone_di_violenza, tipo_violenza, presenza_formazione_antidiscriminazione_in_azienda, presenza_regolamenti_antidiscriminazione from 
+sondaggio_transformation.tt_sondaggio_province_domicilio_ok_v2 pa
+join sondaggio_transformation.province_italiane t
+on lower(trim(pa.provincia_ultimo_lavoro))=lower(t."Sigla")
+union 
+select "timestamp", genere, fascia_eta, provincia_domicilio, grandezza_azienda, durata_lavoro_in_azienda,  provincia_ultimo_lavoro, vittima_o_testimone_di_discriminazione_in_azienda, tipo_discriminazione, vittima_o_testimone_di_violenza, tipo_violenza, presenza_formazione_antidiscriminazione_in_azienda, presenza_regolamenti_antidiscriminazione from 
+sondaggio_transformation.tt_sondaggio_province_domicilio_ok_v2 pa
+left join sondaggio_transformation.province_italiane t
+on lower(trim(pa.provincia_ultimo_lavoro))=lower(t."Sigla")
+where t."Provincia" is null;
+
+
+-- inizio di creazione del fatto
+
+select "timestamp",
+coalesce(dp.ids_provincia,coalesce(dp2.ids_provincia ,-1)) as ids_provincia_domicilio,
+coalesce(dp_l.ids_provincia,coalesce(dp_l2.ids_provincia ,-1)) as ids_provincia_ultimo_lavoro
+from sondaggio_transformation.tt_sondaggio_province_ultimo_lavoro_ok_v3 pa 
+left join sondaggio_transformation.dim_provincia dp
+on lower(pa.provincia_domicilio)=lower(dp.provincia)
+left join sondaggio_transformation.man_mapping_province mmp
+on lower(pa.provincia_domicilio)=lower(mmp.originale )
+left join sondaggio_transformation.dim_provincia dp2
+on lower(mmp.corretto )=lower(dp2.provincia)
+left join sondaggio_transformation.dim_provincia dp_l
+on lower(pa.provincia_ultimo_lavoro)=lower(dp.provincia)
+left join sondaggio_transformation.man_mapping_province mmpl
+on lower(pa.provincia_ultimo_lavoro)=lower(mmp.originale )
+left join sondaggio_transformation.dim_provincia dp_l2
+on lower(mmpl.corretto )=lower(dp2.provincia)
+
