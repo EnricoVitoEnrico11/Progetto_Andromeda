@@ -172,22 +172,12 @@ FROM (
 
 ) final_view;
 	
-	
+
+-- questa qua sotto è la dim_provincia_ultimo_lavoro
+
 drop table if exists dim_provincia_ultimo_lavoro CASCADE;
-	
-create table dim_provincia_ultimo_lavoro as
-	select row_number () over() , * from (
-	select distinct p."Sigla" from sondaggio.progetto_andromeda a
-	join sondaggio_transformation.province_italiane p on (p."Sigla"=a."provincia_ultimo_lavoro"
-	or p."Provincia"=a."provincia_ultimo_lavoro"));
-	
-	
-	
-	-- questa qua sotto è la dim_provincia_ultimo_lavoro
-	
-	drop table if exists dim_provincia_ultimo_lavoro CASCADE;
-	
-	create table dim_provincia_ultimo_lavoro as 
+
+create table dim_provincia_ultimo_lavoro as 
 select 
     row_number() over() as id,
     provincia_clean
