@@ -232,6 +232,7 @@ from (
         coalesce(dp_l.ids_provincia, coalesce(dp_l2.ids_provincia, -1)) as ids_provincia_ultimo_lavoro,
         coalesce(ids_vittima_o_testimone_di_discriminazione_in_azienda, -1) as ids_vittima_o_testimone,
         coalesce(ids_tipo_discriminazione, -1) as ids_tipo_discriminazione,
+        coalesce(ids_vittima_o_testimone_di_violenza, -1) as ids_vittima_o_testimone_violenza,
         coalesce(ids_tipo_violenza, -1) as ids_tipo_violenza,
         coalesce(ids_presenza_formazione_antidiscriminazione_in_azienda, -1) as ids_presenza_formazione,
         coalesce(ids_presenza_regolamenti_antidiscriminazione, -1) as ids_presenza_regolamenti
@@ -261,6 +262,8 @@ left join sondaggio_transformation.dim_vittima_o_testimone_di_discriminazione_in
            pa.vittima_o_testimone_di_discriminazione_in_azienda 
 left join sondaggio_transformation.dim_tipo_discriminazione dtd 
         on dtd.tipo_discriminazione = pa.tipo_discriminazione 
+ left join sondaggio_transformation.dim_vittima_o_testimone_di_violenza dvot
+ on dvot.vittima_o_testimone_di_violenza = pa.vittima_o_testimone_di_violenza
 left join sondaggio_transformation.dim_tipo_violenza dtv 
         on dtv.tipo_violenza = pa.tipo_violenza 
 left join sondaggio_transformation.dim_presenza_formazione_antidiscriminazione_in_azienda dpfaia 
@@ -287,9 +290,11 @@ ADD CONSTRAINT dim_fascia_eta2 UNIQUE (ids_fascia_eta);
 alter table fact_sondaggio
 add constraint fact_3 FOREIGN KEY (ids_fascia_eta) references dim_fascia_eta (ids_fascia_eta);
 
---ERRORE per mancata corrispondenza con fittizio 
+--ERRORE per mancata corrispondenza con fittizio
 ALTER TABLE dim_provincia_domicilio
 ADD CONSTRAINT dim_provincia2 UNIQUE (ids_provincia_domicilio);
+
+insert into dim_provincia_domicilio (ids_provincia_domicilio, "Sigla") values (-1, 'Provincia fittizia');
 
 alter table fact_sondaggio
 add constraint fact_4 FOREIGN KEY (ids_provincia_domicilio) references dim_provincia_domicilio (ids_provincia_domicilio);
@@ -305,6 +310,9 @@ add constraint fact_5 FOREIGN KEY (ids_grandezza_azienda) references dim_grandez
 ALTER TABLE dim_durata_lavoro_in_azienda
 ADD CONSTRAINT dim_durata2 UNIQUE (ids_durata_lavoro_in_azienda);
 
+insert into dim_durata_lavoro_in_azienda (ids_durata_lavoro_in_azienda, durata_lavoro_in_azienda)
+values (-1, 'Durata fittizia')
+
 alter table fact_sondaggio
 add constraint fact_ FOREIGN KEY (ids_durata_lavoro_in_azienda) references dim_durata_lavoro_in_azienda (ids_durata_lavoro_in_azienda);
 
@@ -312,6 +320,8 @@ add constraint fact_ FOREIGN KEY (ids_durata_lavoro_in_azienda) references dim_d
 
 ALTER TABLE dim_provincia_ultimo_lavoro
 ADD CONSTRAINT dim_ultimolavoro2 UNIQUE (id);
+
+insert into dim_provincia_ultimo_lavoro (id, provincia_clean) values (-1, 'Provincia fittizia');
 
 alter table fact_sondaggio
 add constraint fact8 FOREIGN KEY (ids_provincia_ultimo_lavoro) references dim_provincia_ultimo_lavoro (id);
@@ -328,13 +338,22 @@ add constraint fact9 FOREIGN KEY (ids_vittima_o_testimone) references dim_vittim
 ALTER TABLE dim_tipo_discriminazione
 ADD CONSTRAINT dim_discriminazione UNIQUE (ids_tipo_discriminazione);
 
+insert into dim_tipo_discriminazione (ids_tipo_discriminazione, tipo_discriminazione) values (-1, 'Discriminazione fittizia');
 alter table fact_sondaggio
-add constraint fact10 FOREIGN KEY (ids_tipo_discriminazione) references dim_tipo_discriminazione (ids_tipo_discriminazione);
+add constraint fact20 FOREIGN KEY (ids_tipo_discriminazione) references dim_tipo_discriminazione (ids_tipo_discriminazione);
+
+
+ALTER TABLE dim_vittima_o_testimone_di_violenza
+ADD CONSTRAINT dim_violenza UNIQUE (ids_vittima_o_testimone_di_violenza);
+
+alter table fact_sondaggio
+add constraint fact10 FOREIGN KEY (ids_vittima_o_testimone) references dim_vittima_o_testimone_di_violenza (ids_vittima_o_testimone_di_violenza);
 
 --MANCATA CORRISPONDENZA CON FITTIZIO
 ALTER TABLE dim_tipo_violenza
 ADD CONSTRAINT dim_violenza2 UNIQUE (ids_tipo_violenza);
 
+insert into dim_tipo_violenza (ids_tipo_violenza, tipo_violenza) values (-1, 'Violenza fittizia');
 alter table fact_sondaggio
 add constraint fact11 FOREIGN KEY (ids_tipo_violenza) references dim_tipo_violenza (ids_tipo_violenza);
 
@@ -349,8 +368,16 @@ add constraint fact12 FOREIGN KEY (ids_presenza_formazione) references dim_prese
 ALTER TABLE dim_presenza_regolamenti_antidiscriminazione 
 ADD CONSTRAINT dim_presenza_antidiscrim2 UNIQUE (ids_presenza_regolamenti_antidiscriminazione);
 
+insert into dim_presenza_regolamenti_antidiscriminazione (ids_presenza_regolamenti_antidiscriminazione, presenza_regolamenti_antidiscriminazione) values (-1, 'Valore fittizio');
 alter table fact_sondaggio
 add constraint fact13 FOREIGN KEY (ids_presenza_regolamenti) references dim_presenza_regolamenti_antidiscriminazione  (ids_presenza_regolamenti_antidiscriminazione) ;
+
+--chiavi provincia e regione
+ALTER TABLE dim_regioni  
+ADD CONSTRAINT dim_presenza_regioni2 UNIQUE (ids_regione);
+
+alter table dim_provincia_regione 
+add constraint regione FOREIGN KEY (ids_regione) references dim_regioni  (ids_regione) ;
 
 
 
