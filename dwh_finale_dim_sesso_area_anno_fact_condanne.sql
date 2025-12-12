@@ -6,13 +6,13 @@ select distinct tipo_di_reato from istat_landing.lt_condanne_reati_violenti_sess
 
 drop table if exists dim_tipo_reato;
 
-create table istat_transformation.dim_tipo_reato
+create table dwh_progettoandromeda.dim_tipo_reato
 as
 select 
 ROW_Number () over (order by tipo_di_reato) as ids_reato,
 tipo_di_reato,
 NOW() as load_timestamp,
-'ETL' as source_system
+'Landing' as source_system
 from  
 (select distinct tipo_di_reato 	
 from istat_landing.lt_condanne_reati_violenti_sesso_reg ltcrv
@@ -21,9 +21,9 @@ from istat_landing.lt_condanne_reati_violenti_sesso_reg ltcrv
 
 -- per la dim_anno creo con una union
 
-drop table if exists istat_transformation.dim_anno;
+drop table if exists dwh_progettoandromeda.dim_anno;
 
-create table if not exists istat_transformation.dim_anno
+create table if not exists dwh_progettoandromeda.dim_anno
 as
 select
 ROW_Number () over (order by time_period) as ids_anno,
@@ -37,9 +37,9 @@ select distinct time_period from istat_landing.lt_condanne_reati_violenti_sesso_
 order by time_period asc);
 
 
-DROP TABLE istat_transformation.dim_area;
+DROP TABLE dwh_progettoandromeda.dim_area;
 
-create table istat_transformation.dim_area
+create table dwh_progettoandromeda.dim_area
 as
 select 
 ROW_Number () over (order by territorio) as ids_area,
@@ -61,9 +61,9 @@ where territorio in
 
 -- creazione dim_sesso
 
-drop table if exists istat_transformation.dim_sesso;
+drop table if exists dwh_progettoandromeda.dim_sesso;
 
-create table istat_transformation.dim_sesso
+create table dwh_progettoandromeda.dim_sesso
 as
 select 
 ROW_Number () over (order by sesso) as ids_sesso,
@@ -76,29 +76,9 @@ from istat_landing.lt_condanne_reati_violenti_sesso_reg ltcrv
 where sesso != 'Totale'
 );
 
-select sum(osservazione) from istat_landing.lt_condanne_reati_violenti_sesso_reg
-where territorio = 'Italia' ;
-
+-- per controllo select sum(osservazione) from istat_landing.lt_condanne_reati_violenti_sesso_reg where territorio = 'Italia' ;
 
 -- procedo con la creazione del fatto
-
-
-drop table if exists istat_dwh.fact_condanne_reati_violenti_sesso_eta_reg;
-
-create table if not exists istat_dwh.fact_condanne_reati_violenti_sesso_eta_reg as
-select row_number() over() as 
-	ids, 
-	-- ids_regione,  metto in pausa perche' nn abbiamo definito la logica delle regioni
-	ids_reato, 
-	ids_sesso,  
-	ids_anno, 
-	osservazione as numero_condanne
-from istat_landing.lt_condanne_reati_violenti_sesso_reg crv
-join istat_transformation.dim_  mpc on mpc.territorio=dd.territorio
-join istat_transformation.dim_tipo_reato dtr on dtr.tipo_di_reato=crv.tipo_di_reato
-join istat_transformation.dim_sesso ds on ds.sesso=crv.sesso
-join istat_transformation.dim_anno da on da.time_period=crv.time_period
-order by ids asc;
 
 drop table if exists dwh_progettoandromeda.fact_condanne_reati_violenti_sesso_eta_reg;
 

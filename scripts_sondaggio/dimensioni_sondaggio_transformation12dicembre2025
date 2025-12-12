@@ -1,0 +1,102 @@
+drop table if exists dim_genere;
+
+create table dim_genere as 
+select row_number() over () as ids_genere, * from (
+	select distinct pa.genere 
+	from sondaggio.progetto_andromeda pa
+);
+
+
+drop table if exists dim_fascia_eta;
+
+create table dim_fascia_eta as 
+ select row_number() over (order by fascia_eta) as ids_fascia_eta, * from (
+   select distinct pa.fascia_eta 
+from sondaggio.progetto_andromeda pa
+
+) t; 
+
+
+drop table if exists dim_grandezza_azienda;
+
+create table dim_grandezza_azienda as 
+ select row_number() over () as ids_grandezza_azienda, * from (
+   select distinct pa.grandezza_azienda 
+from sondaggio.progetto_andromeda pa
+) t
+order by grandezza_azienda;
+
+
+drop table if exists dim_durata_lavoro_in_azienda;
+
+create table dim_durata_lavoro_in_azienda  as
+select
+	row_number() over(order by t.durata_lavoro_in_azienda) as 
+	ids_durata_lavoro_in_azienda, t.* from (
+	select distinct coalesce(nullif(trim(pa.durata_lavoro_in_azienda), ''),
+	'Non indicato') as durata_lavoro_in_azienda
+	from sondaggio.progetto_andromeda pa
+	) t;
+
+
+drop table if exists dim_vittima_o_testimone_di_discriminazione_in_azienda;
+
+create table dim_vittima_o_testimone_di_discriminazione_in_azienda   as 
+ select row_number() over () as ids_vittima_o_testimone_di_discriminazione_in_azienda, * from (
+   select distinct pa.vittima_o_testimone_di_discriminazione_in_azienda
+from sondaggio.progetto_andromeda pa
+
+) t 
+order by vittima_o_testimone_di_discriminazione_in_azienda;
+
+
+drop table if exists dim_vittima_o_testimone_di_violenza;
+
+create table dim_vittima_o_testimone_di_violenza as 
+select row_number() over () ids_vittima_o_testimone_di_violenza, * from (
+select distinct pa.vittima_o_testimone_di_violenza
+from sondaggio.progetto_andromeda pa
+
+) t;
+
+
+drop table if exists dim_presenza_formazione_antidiscriminazione_in_azienda;
+
+create table dim_presenza_formazione_antidiscriminazione_in_azienda as 
+select row_number() over () ids_presenza_formazione_antidiscriminazione_in_azienda, * from (
+select distinct pa.presenza_formazione_antidiscriminazione_in_azienda
+from sondaggio.progetto_andromeda pa
+
+) t;
+
+
+drop table if exists dim_presenza_regolamenti_antidiscriminazione;
+
+create table dim_presenza_regolamenti_antidiscriminazione as
+	select
+	row_number() over(order by t.presenza_regolamenti_antidiscriminazione) as 
+	ids_presenza_regolamenti_antidiscriminazione, t.* from (
+	select distinct coalesce(nullif(trim(pa.presenza_regolamenti_antidiscriminazione), ''),
+	'Non indicato') as presenza_regolamenti_antidiscriminazione
+	from sondaggio.progetto_andromeda pa
+	) t;
+
+
+
+
+drop table if exists dim_tipo_discriminazione;
+create table if not exists dim_tipo_discriminazione as
+ select row_number() over(), * from (
+SELECT DISTINCT
+    COALESCE(trim(elem), 'Nessuna discriminazione indicata') AS singolo_elemento
+FROM sondaggio.progetto_andromeda pa
+LEFT JOIN LATERAL unnest(string_to_array(pa.tipo_discriminazione, ',')) AS elem ON true);
+
+
+drop table if exists dim_tipo_violenza;
+create table if not exists dim_tipo_violenza as
+ select row_number() over(), * from (
+SELECT DISTINCT
+    COALESCE(trim(elem), 'Nessuna violenza indicata') AS singolo_elemento
+FROM sondaggio.progetto_andromeda pa
+LEFT JOIN LATERAL unnest(string_to_array(pa.tipo_violenza, ',')) AS elem ON true);
